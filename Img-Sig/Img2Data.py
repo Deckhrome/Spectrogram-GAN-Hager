@@ -1,17 +1,16 @@
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import istft
 from PIL import Image
 
-def inverse_rgb_image_to_signal(image_path, fs=4000, nperseg=38*10, original_signal_length=None):
+def inverse_rgb_image_to_signal(image_path, fs=4000, nperseg=38*10, target_signal_length=1900):
     """
     Reconstruit un signal temporel à partir d'une image PNG (spectrogramme en RGB).
     
     :param image_path: Chemin de l'image PNG
     :param fs: Fréquence d'échantillonnage utilisée pour la reconstruction
     :param nperseg: Nombre de points par segment utilisé dans le STFT original
-    :param original_signal_length: Longueur originale du signal pour ajuster si nécessaire
+    :param target_signal_length: Longueur souhaitée du signal reconstruit
     :return: Signal temporel reconstruit
     """
     # Charger l'image PNG
@@ -29,27 +28,48 @@ def inverse_rgb_image_to_signal(image_path, fs=4000, nperseg=38*10, original_sig
     phase_angle = B_channel * np.pi  # Canal bleu représente l'angle de phase (normalisé entre -pi et pi)
 
     # Reconstruire la matrice complexe à partir des canaux RGB
-    Zxx = real_part + 1j * imag_part * np.tan(phase_angle)
+    Zxx = real_part + 1j * imag_part * np.exp(1j * phase_angle)
 
     # Appliquer l'ISTFT pour retrouver le signal temporel
     _, signal_reconstructed = istft(Zxx, fs, nperseg=nperseg)
 
     # Ajuster la longueur du signal reconstruit si nécessaire
-    if original_signal_length is not None and len(signal_reconstructed) != original_signal_length:
-        signal_reconstructed = signal_reconstructed[:original_signal_length]
+    if len(signal_reconstructed) > target_signal_length:
+        signal_reconstructed = signal_reconstructed[:target_signal_length]
+    elif len(signal_reconstructed) < target_signal_length:
+        # Si le signal est plus court que la longueur cible, on le remplit de zéros
+        signal_reconstructed = np.pad(signal_reconstructed, (0, target_signal_length - len(signal_reconstructed)), mode='constant')
 
     return signal_reconstructed
 
 # Exemple d'utilisation
-image_file_path = '/home/hager/Desktop/Hager/cleanSamples/sample_epoch_100_cleaned.png'
-original_signal_length = 1900  # Remplacer par la longueur correcte du signal original si connu
-reconstructed_signal = inverse_rgb_image_to_signal(image_file_path, original_signal_length=original_signal_length)
+matrix_file_path = '/home/hager/Desktop/Hager/Data/matrix/01-09-2016_SequenceTrace_00007_2_data_119490.mat'
+image_file_path = '/home/hager/Desktop/Hager/SpectrogramGAN/sampleSpectrograms/Images/01-09-2016_SequenceTrace_00007_2_data_119490_voltage.png' 
+reconstructed_signal = inverse_rgb_image_to_signal(image_file_path)
+
+# open .mat and build the signal to plot
+import scipy.io
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Charger le fichier .mat contenant le signal
+mat = scipy.io.loadmat(matrix_file_path)
+signal = mat['voltage']
+x_value = np.arange(0, len(signal))   
+
+# Tracer le signal original
+plt.figure(figsize=(10, 6))
+plt.plot(x_value, signal)
+plt.title('Signal temporel original')
+plt.xlabel('Temps (échantillons)')
+plt.ylabel('Amplitude')
+plt.show()
 
 # Tracer le signal reconstruit
 plt.figure(figsize=(10, 6))
 plt.plot(reconstructed_signal)
 plt.title('Signal temporel reconstruit à partir de l\'image PNG')
-plt.xlabel('Temps')
+plt.xlabel('Temps (échantillons)')
 plt.ylabel('Amplitude')
 plt.show()
 

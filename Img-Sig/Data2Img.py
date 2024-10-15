@@ -125,7 +125,7 @@ def ImgFrMat(mat_file, output_folder):
             plt.savefig(image_file_path, bbox_inches='tight', pad_inches=0, transparent=True, dpi=72)  # Adjust DPI if needed
             plt.close()
             
-            logging.info(f"Processed and saved image for {name} as {image_file_path}")
+            #logging.info(f"Processed and saved image for {name} as {image_file_path}")
         except Exception as e:
             logging.error(f"Failed to process {name} in {mat_file}: {e}")
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     ]
     
     input_folder = '/home/hager/Desktop/Hager/Data/Zipfiles'
-    output_folder = '/home/hager/Desktop/Hager/SpectrogramGAN/sampleSpectrograms/Images'
+    output_folder = '/home/hager/Desktop/Hager/Data/Images'
 
     proxy_activate()  # Activate the proxy if needed
     #download_files(list_link, input_folder)  # Download files
@@ -151,6 +151,7 @@ if __name__ == "__main__":
     # Process .mat files
     mat_folder = '/home/hager/Desktop/Hager/Data/matrix'
     mat_files = [file for file in os.listdir(mat_folder) if file.lower().endswith('.mat')]
-    
-    for mat_file in (mat_files):
+
+    limit = 5  # Limit the number of files to process
+    for mat_file in tqdm(mat_files[:limit]):
         ImgFrMat(os.path.join(mat_folder, mat_file), output_folder)

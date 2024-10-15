@@ -19,11 +19,11 @@ class Generator2(nn.Module):
         self.ct2 = nn.ConvTranspose2d(hidden_dim * 8, hidden_dim * 4, kernel_size=4, stride=2, padding=1)  # 16x16 -> 32x32
         self.bn2 = nn.BatchNorm2d(hidden_dim * 4)
         
-        self.ct3 = nn.ConvTranspose2d(hidden_dim * 4, hidden_dim * 2, kernel_size=4, stride=(2, 2), padding= (1,0))  # 32x32 -> 64x66
+        self.ct3 = nn.ConvTranspose2d(hidden_dim * 4, hidden_dim * 2, kernel_size=4, stride=(2, 2), padding= (0,1))  # 32x32 -> 64x66
         
-        self.ct4 = nn.ConvTranspose2d(hidden_dim * 2, hidden_dim, kernel_size=4, stride=(2, 2), padding= (1,0))  # 64x64 -> 128x134
+        self.ct4 = nn.ConvTranspose2d(hidden_dim * 2, hidden_dim, kernel_size=4, stride=(2, 2), padding= (0,1))  # 64x64 -> 128x134
         
-        self.ct5 = nn.ConvTranspose2d(hidden_dim, image_channels, kernel_size=(3, 2), stride=(1, 2), padding=(2, 1))  # Final to 126x266
+        self.ct5 = nn.ConvTranspose2d(hidden_dim, image_channels, kernel_size=(2, 3), stride=(2, 1), padding=(1, 2))  # Final to 126x266
         
     def forward(self, x):
         x = self.fc(x)

@@ -23,17 +23,17 @@ transform = transforms.Compose([
 ])
 
 # Chargement des images
-image_dir = 'SampleSpectrograms'
+image_dir = 'sampleSpectrograms'
 full_dataset = ImageFolder(root=image_dir, transform=transform)
 
 # Limiter le dataset à max_images
-max_images = 100000
+max_images = 50000
 dataset_size = len(full_dataset)
 indices = list(range(min(max_images, dataset_size)))  
 train_dataset = Subset(full_dataset, indices)
 
 # DataLoader pour charger les images
-batch_size = 32
+batch_size = 16
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
 # Paramètres du GAN
@@ -96,6 +96,9 @@ num_epochs = 100
 start_time = time.time()  # Mesurer le temps total
 
 D_losses, G_losses = [], []  # Pour enregistrer toutes les pertes
+
+# Start training
+print('Starting Training Loop...')
 
 for epoch in range(1, num_epochs + 1):
     epoch_start_time = time.time()  # Mesurer le temps d'une époque
