@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import stft
 import pickle
 import logging
+import math
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -82,21 +83,25 @@ def download_files(zip_urls, download_path='downloads'):
 
 
 def generate_rgb_image(Zxx):
-    """Generates an RGB image from STFT data by normalizing real, imaginary, and phase components without repeating."""
+    """Generates an RGB image from STFT data by normalizing real, imaginary, and phase components."""
     x_real = np.real(Zxx)
     x_imag = np.imag(Zxx)
-    x_angle = np.angle(Zxx) / np.pi
 
-    # Normalize each array
+    # Normalize real and imaginary parts separately
+    array1 = x_real.astype(np.float32)
+    array2 = x_imag.astype(np.float32)
+
     def normalize(arr):
-        return (arr - np.min(arr)) / (np.max(arr) - np.min(arr))
+        return arr / math.ceil(np.max(abs(arr)))
     
-    array1 = normalize(x_real)
-    array2 = normalize(x_imag)
-    array3 = normalize(x_angle)
+    array1 = normalize(array1)
+    array2 = normalize(array2)
 
     # Stack normalized components into an RGB image
-    return np.dstack((array1, array2, array3))
+    rgb_image = np.dstack((array1, array2, ))
+
+    return rgb_image
+
 
 def ImgFrMat(mat_file, output_folder):
     """Processes .mat files and converts time-series data into compact RGB images."""
@@ -112,18 +117,12 @@ def ImgFrMat(mat_file, output_folder):
                 continue
             
             # Perform STFT with fewer segments to reduce image size
-            f, t, Zxx = stft(signal, fs=fs, nperseg=128)  # Adjust nperseg for smaller size
-            rgb_image = generate_rgb_image(Zxx)
-            
-            # Plot and save image without enlarging the figure
-            plt.imshow(rgb_image)
-            plt.axis('off')
-            
-            # Save the image with reduced dimensions (optional: adjust DPI for further compression)
-            mat_file_base = os.path.splitext(os.path.basename(mat_file))[0]
-            image_file_path = os.path.join(output_folder, f"{mat_file_base}_{name}.png")
-            plt.savefig(image_file_path, bbox_inches='tight', pad_inches=0, transparent=True, dpi=72)  # Adjust DPI if needed
-            plt.close()
+            f, t, Zxx = stft(signal, fs=fs, nperseg=254, noverlap=60)  # Adjust nperseg for smaller size
+            two_channel_image = generate_rgb_image(Zxx)
+
+            # Save the 2 channels image, remove .mat extension
+            image_file_path = os.path.join(output_folder, os.path.splitext(os.path.basename(mat_file))[0] + f'_{name}.npy')
+            np.save(image_file_path, two_channel_image)
             
             #logging.info(f"Processed and saved image for {name} as {image_file_path}")
         except Exception as e:
@@ -142,7 +141,7 @@ if __name__ == "__main__":
     ]
     
     input_folder = '/home/hager/Desktop/Hager/Data/Zipfiles'
-    output_folder = '/home/hager/Desktop/Hager/Data/Images'
+    output_folder = '/home/hager/Desktop/Hager/SpectrogramGAN/sampleSpectrograms/Images'
 
     proxy_activate()  # Activate the proxy if needed
     #download_files(list_link, input_folder)  # Download files
@@ -152,6 +151,6 @@ if __name__ == "__main__":
     mat_folder = '/home/hager/Desktop/Hager/Data/matrix'
     mat_files = [file for file in os.listdir(mat_folder) if file.lower().endswith('.mat')]
 
-    limit = 5  # Limit the number of files to process
+    limit = -1  # Limit the number of files to process
     for mat_file in tqdm(mat_files[:limit]):
         ImgFrMat(os.path.join(mat_folder, mat_file), output_folder)

@@ -2,3 +2,7 @@
 /model_saved
 /samples
 /sampleSpectrograms
+
+# usefull scripts 
+sort.py
+structure_image.py
