@@ -20,14 +20,22 @@ def plot_ts_data(data_img):
     plt.show()
 
 # Exemple d'utilisation
-matrix_file_path = '/home/hager/Desktop/Hager/Data/matrix/2017-04-23_SequenceTrace_00100_4_data_170248_current.npy'
-image_file_path = '/home/hager/Desktop/Hager/Data/Images/2017-04-23_SequenceTrace_00100_4_data_170248_current.npy' 
+image_file_path_generated = '/home/hager/Desktop/Hager/SpectrogramGAN/samples/sample_100.npy' 
+img_file_path_real = '/home/hager/Desktop/Hager/Data/Images/2017-04-23_SequenceTrace_00100_4_data_170248_current.npy'
 
 # Open the image file
-data_img = np.load(image_file_path)
+data_img = np.load(image_file_path_generated)
+print(data_img.shape)
+# Remove the last dimension if it's 1 and put dimension in the right order
+data_img = data_img.squeeze()
+data_img = data_img.transpose(1, 2, 0)
 plot_ts_data(data_img)
 
+# Open the image file
+data_img_real = np.load(img_file_path_real)
+print(data_img_real.shape)
+plot_ts_data(data_img_real)
 # Then plot the original .mat file 
-mat_data = scipy.io.loadmat(matrix_file_path)
-plt.plot(mat_data['current'])
-plt.show()
+# mat_data = scipy.io.loadmat(matrix_file_path)
+# plt.plot(mat_data['current'])
+# plt.show()

@@ -16,18 +16,20 @@ def load_npy_files(data_dir, max_data):
     data = []
     for npy_file in npy_files[:max_data]:
         arr = np.load(npy_file)
+        # Normalize data to the range [-1, 1]
+        arr = (arr - np.min(arr)) / (np.max(arr) - np.min(arr)) * 2 - 1
         data.append(arr)
     print(f'Loaded {len(data)} .npy files')
     return np.stack(data)  # Array (nb_samples, 2, 128, 11)
 
-max_data = 5000
+max_data = -1
 
 # Create directory if doesn't exist
 os.makedirs('model_saved', exist_ok=True)
 os.makedirs('samples', exist_ok=True)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-data_dir = '/home/hager/Desktop/Hager/SpectrogramGAN/sampleSpectrograms/current'  # Directory containing the .npy files
+data_dir = '/home/hager/Desktop/Hager/SpectrogramGAN/sampleSpectrograms/voltage'  # Directory containing the .npy files
 train_dataset = load_npy_files(data_dir, max_data)
 
 # DataLoader to load the images
@@ -36,29 +38,35 @@ train_dataset = torch.from_numpy(train_dataset).float()
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
 
-# Paramètres du GAN
+# Hyperparameters
 z_dim = 1000
 image_dim = (2, 128, 11)
 
-# Initialisation du générateur et du discriminateur
+# Initialize the models
 G = Generator2(z_dim=z_dim, image_channels=image_dim[0]).to(device)
 D = Discriminator2(image_channels=image_dim[0]).to(device)
 
-# Optimiseurs
+# Optimizers
 lr_G = 0.0002
-lr_D = 0.0002
+lr_D = 0.00002
 G_optimizer = optim.Adam(G.parameters(), lr=lr_G)
 D_optimizer = optim.Adam(D.parameters(), lr=lr_D)
 
-# Fonction de perte
+# Loss function
 criterion = nn.BCELoss()
+
+# Label smoothing
+real_label_smooth = 0.9
+
+def clip_gradients(model, max_norm=1.0):
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
 
 # Training Discriminator
 def D_train(x):
     D.zero_grad()
     x_real = x.to(device)
     batch_size = x.size(0)
-    y_real = torch.ones(batch_size, 1).to(device)
+    y_real = torch.ones(batch_size, 1).to(device) * real_label_smooth
 
     D_output_real = D(x_real)
     D_real_loss = criterion(D_output_real, y_real)
@@ -72,6 +80,9 @@ def D_train(x):
 
     D_loss = D_real_loss + D_fake_loss
     D_loss.backward()
+
+    # Clip gradients for discriminator
+    clip_gradients(D)
     D_optimizer.step()
 
     return D_loss.item()
@@ -81,12 +92,17 @@ def G_train(x):
     G.zero_grad()
     batch_size = x.size(0)
 
+    # Generator loss
     z = torch.randn(batch_size, z_dim).to(device)
     G_output = G(z)
     D_output = D(G_output)
     y = torch.ones(batch_size, 1).to(device)
+
     G_loss = criterion(D_output, y)
     G_loss.backward()
+
+    # Clip gradients for generator
+    clip_gradients(G)
     G_optimizer.step()
 
     return G_loss.item()
@@ -99,13 +115,11 @@ D_losses, G_losses = [], []  # Pour enregistrer toutes les pertes
 
 # Start training
 print('Starting Training Loop...')
-
 for epoch in range(1, num_epochs + 1):
     epoch_start_time = time.time()  # Mesurer le temps d'une époque
     D_losses_epoch, G_losses_epoch = [], []
 
     for batch_idx, x in enumerate(train_loader):
-        print("x shape: ", x.shape)
         D_losses_epoch.append(D_train(x))
         G_losses_epoch.append(G_train(x))
 
@@ -117,7 +131,8 @@ for epoch in range(1, num_epochs + 1):
         with torch.no_grad():
             z = torch.randn(1, z_dim).to(device)
             fake_images = G(z)
-            save_image(fake_images, f'samples/sample_epoch_{epoch}.png', nrow=4, normalize=True)
+            np.save(f'samples/sample_{epoch}.npy', fake_images.cpu().numpy())
+            
 
     epoch_time = time.time() - epoch_start_time
     print(f'Epoch [{epoch}/{num_epochs}]: loss_d: {D_losses[-1]:.3f}, loss_g: {G_losses[-1]:.3f}, epoch_time: {epoch_time:.2f}s')
