@@ -102,13 +102,13 @@ def G_train(x):
     G_loss.backward()
 
     # Clip gradients for generator
-    clip_gradients(G)
+    clip_gradients(G, max_norm=0.5)
     G_optimizer.step()
 
     return G_loss.item()
 
 # GAN training
-num_epochs = 100
+num_epochs = 300
 start_time = time.time()  # Mesurer le temps total
 
 D_losses, G_losses = [], []  # Pour enregistrer toutes les pertes
